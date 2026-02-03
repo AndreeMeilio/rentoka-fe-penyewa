@@ -324,6 +324,40 @@ export default function TransactionPage() {
           </div>
         </div>
       )}
+
+      {/* MODAL SUKSES PEMBATALAN */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[150] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl text-center transform transition-all animate-in fade-in zoom-in duration-300">
+            
+            {/* Animasi Checkmark */}
+            <div className="flex justify-center mb-6">
+              <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center animate-bounce">
+                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-200">
+                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <h2 className="text-3xl font-black text-black mb-2 uppercase italic">Success!</h2>
+            <p className="text-gray-500 font-medium leading-relaxed mb-8">
+              Pengajuan pembatalan berhasil dikirim. Kami akan memproses refund Anda dalam waktu 1x24 jam.
+            </p>
+
+            <button 
+              onClick={() => {
+                setShowSuccessModal(false);
+                handleCloseModal(); // Menutup modal pembatalan utama dan reset state
+              }}
+              className="w-full bg-black text-white py-4 rounded-2xl font-bold text-lg hover:scale-[1.02] transition-transform active:scale-95"
+            >
+              Lanjutkan
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

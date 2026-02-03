@@ -230,35 +230,46 @@ export default function ProfilePage() {
         </button>
       </div>
 
-      {/* --- CUSTOM MODAL NOTIFICATION --- */}
+      {/* --- CUSTOM MODAL NOTIFICATION (ERROR & SUCCESS) --- */}
       {showErrorModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 flex flex-col items-center text-center animate-in zoom-in-95 duration-300 border border-gray-100">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl text-center transform transition-all animate-in fade-in zoom-in duration-300">
             
-            {/* Icon (Bisa berubah warna tergantung sukses/gagal) */}
-            <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-6 shadow-lg ${
-              modalMessage.includes("berhasil") ? "bg-green-500 shadow-green-200" : "bg-red-500 shadow-red-200"
-            }`}>
-              {modalMessage.includes("berhasil") ? (
-                <Check className="text-white" size={32} strokeWidth={3} />
-              ) : (
-                <span className="text-white text-3xl font-black">!</span>
-              )}
+            {/* Animasi Icon (Berubah berdasarkan isi pesan) */}
+            <div className="flex justify-center mb-6">
+              <div className={`w-24 h-24 rounded-full flex items-center justify-center animate-bounce ${
+                modalMessage.toLowerCase().includes("berhasil") ? "bg-green-100" : "bg-red-100"
+              }`}>
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg ${
+                  modalMessage.toLowerCase().includes("berhasil") ? "bg-green-500 shadow-green-200" : "bg-red-500 shadow-red-200"
+                }`}>
+                  {modalMessage.toLowerCase().includes("berhasil") ? (
+                    <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                  ) : (
+                    // Icon Error (!)
+                    <span className="text-white text-4xl font-black italic">!</span>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <h3 className="text-xl font-black mb-2 tracking-tight text-black">
-              {modalMessage.includes("berhasil") ? "MANTAP!" : "UPS, ADA MASALAH"}
-            </h3>
+            <h2 className="text-3xl font-black text-black mb-2 uppercase italic">
+              {modalMessage.toLowerCase().includes("berhasil") ? "Success!" : "Oops!"}
+            </h2>
             
-            <p className="text-gray-500 font-medium mb-8 leading-relaxed">
+            <p className="text-gray-500 font-medium leading-relaxed mb-8">
               {modalMessage}
             </p>
 
             <button 
               onClick={() => setShowErrorModal(false)}
-              className="w-full bg-black text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-zinc-800 transition active:scale-[0.98] shadow-lg shadow-black/10"
+              className={`w-full text-white py-4 rounded-2xl font-bold text-lg hover:scale-[1.02] transition-transform active:scale-95 ${
+                modalMessage.toLowerCase().includes("berhasil") ? "bg-black" : "bg-red-600 shadow-lg shadow-red-100"
+              }`}
             >
-              Tutup
+              {modalMessage.toLowerCase().includes("berhasil") ? "Lanjutkan" : "Coba Lagi"}
             </button>
           </div>
         </div>

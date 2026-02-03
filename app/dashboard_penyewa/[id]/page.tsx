@@ -15,6 +15,8 @@ export default function CarDetailPage() {
   const [paymentError, setPaymentError] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showFinalCheck, setShowFinalCheck] = useState(false);
+  const [currentTransactionId, setCurrentTransactionId] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Mengambil data dari URL (dikirim dari parent)
   const car = {
@@ -25,14 +27,17 @@ export default function CarDetailPage() {
     image_path: searchParams.get("img") || "",
     rate: searchParams.get("rate"),
     rate_count: searchParams.get("count"),
-    distance: searchParams.get("dist")
+    distance: searchParams.get("dist") && searchParams.get("dist") !== "null" 
+              ? searchParams.get("dist") 
+              : null
   };
 
   const [formData, setFormData] = useState({
     name: "",
     address: "",
     phone_number: "",
-    id_card_number: ""
+    id_card_number: "",
+    email: "",
   });
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -54,17 +59,98 @@ export default function CarDetailPage() {
       }
     }
   }, [startDate, endDate]);
+  
 
   const handleContinue = async () => {
     console.log("Data siap dikirim:", { ...formData, ...car, startDate, endDate, totalPrice });
   };
+
+  const handleCreateTransaction = async () => {
+  // 1. Validasi sederhana di sisi klien
+  if (!startDate || !endDate || !formData.phone_number || !formData.id_card_number) {
+    alert("Mohon lengkapi semua data sewa!");
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem("token");
+    const customerId = localStorage.getItem("id_customer"); // Asumsi data user disimpan di sini
+
+    const payload = {
+      id_customer: customerId, // Ambil dari profil user
+      id_vehicle: car.id_vehicle,
+      name: formData.name,
+      email: formData.email,
+      id_card_number: formData.id_card_number,
+      rental_date: startDate,
+      return_date: endDate,
+      phone_number: formData.phone_number,
+      address: formData.address, // Tambahan opsional
+    };
+
+    const response = await fetch("https://rentoka.olifemassage.com/api/customer/transaction", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json();
+
+    console.log(result);
+    if (result.success) {
+      const newId = result.data.id_transaction;
+      console.log(newId);
+      //setCurrentTransactionId(result.id_transaction);
+      handleProcessPayment(newId);
+    } else {
+      alert("Gagal membuat transaksi: " + result.message);
+    }
+  } catch (error) {
+    console.error("Error:", error);
+    alert("Terjadi kesalahan koneksi ke server.");
+  }
+};
+
+const handleProcessPayment = async (transactionId: any) => {
+  try {
+    const payload = {
+      id_transaction: transactionId,
+      payment_method: paymentMethod, // Diambil dari state pilihan user di modal
+      payment_total: totalPrice,    // Diambil dari total perhitungan hari * harga
+    };
+
+    const response = await fetch("https://rentoka.olifemassage.com/api/payment", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${localStorage.getItem("token")}`
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      setShowFinalCheck(false); 
+      setShowSuccessModal(true); 
+    } else {
+      alert("Gagal memproses pembayaran: " + result.message);
+    }
+  } catch (error) {
+    console.error("Payment Error:", error);
+    alert("Terjadi kesalahan sistem saat pembayaran.");
+  }
+};
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-[#EFEFEF] w-full max-w-6xl max-h-[95vh] rounded-[2.5rem] shadow-2xl relative overflow-y-auto flex flex-col md:flex-row">
         
         {/* Tombol Close */}
-        <button onClick={() => router.back()} className="absolute top-6 right-6 w-10 h-10 bg-white rounded-full flex items-center justify-center z-50">
+        <button onClick={() => router.back()} className="absolute top-6 right-6 w-10 h-10 bg-white rounded-full flex items-center justify-center z-50 text-black">
           <X size={24} />
         </button>
 
@@ -89,9 +175,15 @@ export default function CarDetailPage() {
             </div>
           </div>
           <div className="flex gap-2 pt-2">
-              <div className="bg-white px-3 py-1 rounded-full flex items-center gap-1.5 text-[11px] font-bold shadow-sm border border-gray-100 text-black">
-                <MapPin size={12} className="text-gray-500" /> {car.distance}
-              </div>
+              {car.distance && car.distance !== "null" && car.distance !== "" && (
+                <div className="bg-white px-3 py-1 rounded-full flex items-center gap-1.5 text-[11px] font-bold shadow-sm border border-gray-100 text-black">
+                  <MapPin size={12} className="text-gray-500" /> 
+                  {/* Jika ingin format meter/km otomatis */}
+                  {Number(car.distance) < 1000 
+                    ? `${car.distance} m` 
+                    : `${(Number(car.distance) / 1000).toFixed(1)} km`}
+                </div>
+              )}
               <div className="bg-white px-3 py-1 rounded-full flex items-center gap-1.5 text-[11px] font-bold shadow-sm border border-gray-100 text-black">
                 <Star size={12} className="fill-yellow-400 text-yellow-400 border-none" /> {car.rate} <span className="text-gray-400">({car.rate_count})</span>
               </div>
@@ -104,15 +196,24 @@ export default function CarDetailPage() {
             <div className="grid grid-cols-2 gap-x-6 gap-y-4">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-800">Nama Lengkap</label>
-                <input type="text" placeholder="Nama Lengkap" className="w-full bg-[#EFEFEF] p-3 rounded-xl text-xs font-medium text-gray-500 focus:outline-none" />
+                <input type="text" placeholder="Nama Lengkap" 
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                className="w-full bg-[#EFEFEF] p-3 rounded-xl text-xs font-medium text-gray-500 focus:outline-none" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-800">Email</label>
-                <input type="email" placeholder="Email" className="w-full bg-[#EFEFEF] p-3 rounded-xl text-xs font-medium text-gray-500 focus:outline-none" />
+                <input type="email" placeholder="Email" 
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                className="w-full bg-[#EFEFEF] p-3 rounded-xl text-xs font-medium text-gray-500 focus:outline-none" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-800">Nomor KTP</label>
-                <input type="text" placeholder="Nomor KTP" className="w-full bg-[#EFEFEF] p-3 rounded-xl text-xs font-medium text-gray-500 focus:outline-none" />
+                <input type="text" placeholder="Nomor KTP" 
+                value={formData.id_card_number}
+                onChange={(e) => setFormData({...formData, id_card_number: e.target.value})}
+                className="w-full bg-[#EFEFEF] p-3 rounded-xl text-xs font-medium text-gray-500 focus:outline-none" />
               </div>
               <div className="grid grid-cols-2 gap-2">
                  <div className="space-y-1">
@@ -138,12 +239,17 @@ export default function CarDetailPage() {
                 <label className="text-xs font-bold text-gray-800">Alamat</label>
                 <textarea 
                     placeholder="Alamat" 
-                    className="w-full bg-[#EFEFEF] p-3 rounded-xl text-[10px] font-medium text-gray-400 focus:outline-none h-20 resize-none leading-relaxed" 
+                    value={formData.address}
+                    onChange={(e) => setFormData({...formData, address: e.target.value})}
+                    className="w-full bg-[#EFEFEF] p-3 rounded-xl text-[12px] font-medium text-gray-400 focus:outline-none h-20 resize-none leading-relaxed" 
                 />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-gray-800">Nomor Telepon</label>
-                <input type="text" placeholder="0824-7891-1212" className="w-full bg-[#EFEFEF] p-3 rounded-xl text-xs font-medium text-gray-500 focus:outline-none" />
+                <input type="text" placeholder="0824-7891-1212" 
+                value={formData.phone_number}
+                onChange={(e) => setFormData({...formData, phone_number: e.target.value})}
+                className="w-full bg-[#EFEFEF] p-3 rounded-xl text-xs font-medium text-gray-500 focus:outline-none" />
               </div>
             </div>
           </div>
@@ -244,6 +350,7 @@ export default function CarDetailPage() {
             <button 
               onClick={() => {
                 if (isLoggedIn) {
+
                   setShowPaymentModal(true); 
                 } else {
                   router.push("/login");
@@ -412,13 +519,47 @@ export default function CarDetailPage() {
 
               <button 
                 onClick={() => {
-                  console.log("Submit data ke API...");
+                  handleCreateTransaction();
                 }}
                 className="w-full bg-[#1A1A1A] text-white py-4 rounded-xl font-bold text-base mt-4 hover:bg-black transition-all"
               >
                 Ya, bayar & buat pesanan
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL SUKSES PEMBAYARAN */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[150] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl text-center transform transition-all animate-in fade-in zoom-in duration-300">
+            
+            {/* Animasi Checkmark */}
+            <div className="flex justify-center mb-6">
+              <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center animate-bounce">
+                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-200">
+                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <h2 className="text-3xl font-black text-black mb-2 uppercase italic">Success!</h2>
+            <p className="text-gray-500 font-medium leading-relaxed mb-8">
+              Pembayaran berhasil dikonfirmasi. Pesanan Anda kini sedang kami proses.
+            </p>
+
+            <button 
+              onClick={() => {
+                setShowSuccessModal(false);
+                router.push("/dashboard_penyewa/transaction"); // Arahkan ke history setelah klik
+              }}
+              className="w-full bg-black text-white py-4 rounded-2xl font-bold text-lg hover:scale-[1.02] transition-transform active:scale-95"
+            >
+              Lihat Pesanan Saya
+            </button>
           </div>
         </div>
       )}

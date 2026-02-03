@@ -35,7 +35,10 @@ export default function DashboardPage() {
       const json = await res.json();
       
       if (json.success && json.data) {
-        setCars(json.data);
+        const availableCars = json.data.filter(
+          (car: Car) => car.vehicle_status === "AVAILABLE"
+        );
+        setCars(availableCars);
       }
     } catch (err) {
       console.error("Gagal memuat data mobil:", err);
@@ -69,9 +72,20 @@ export default function DashboardPage() {
             {cars.length}
           </h2>
           <h3 className="text-2xl font-semibold text-black italic tracking-tight">
-            Mobil siap dipesan
+            Mobil Tersedia
           </h3>
         </div>
+
+        {/* Di dalam return, setelah Header Statistik */}
+        {cars.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-gray-400 font-bold italic uppercase">Maaf, saat ini tidak ada mobil yang tersedia.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* ... mapping cars seperti biasa ... */}
+          </div>
+        )}
 
         {/* Grid Car List */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -130,18 +144,23 @@ export default function DashboardPage() {
                   </h4>
                 </div>
                 
-                {/* Gambar Mobil */}
+                {/* Gambar Mobil (Menggunakan Placeholder Gambar Mobil Realistis) */}
                 <div className="relative w-32 h-24">
                   <div className="bg-gray-50 rounded-[1.5rem] w-full h-full flex items-center justify-center group-hover:bg-gray-100 transition-colors overflow-hidden border border-gray-100">
-                    {car.image_path ? (
-                      <img 
-                        src={`http://localhost:8000/${car.image_path}`} 
-                        alt={car.vehicle_name}
-                        className="w-full h-full object-contain p-2 group-hover:scale-110 transition-transform duration-500"
-                      />
-                    ) : (
-                      <span className="text-[10px] text-gray-400 italic font-bold uppercase tracking-widest text-center">No <br/> Image</span>
-                    )}
+                    {/* Logika: Jika image_path ada gunakan itu, jika tidak ada (atau untuk sementara) gunakan link Unsplash */}
+                    <img 
+                      src={
+                        car.image_path && car.image_path !== "" 
+                          ? `https://rentoka.olifemassage.com/${car.image_path}`
+                          : `https://p7.hiclipart.com/preview/421/394/316/car-compact-car-3d-computer-graphics-city-car-3d-car.jpg` 
+                      }
+                      alt="Car Preview"
+                      className="w-full h-full object-contain p-2 group-hover:scale-110 transition-transform duration-500"
+                      onError={(e) => {
+                        // Fallback jika link unsplash atau API error
+                        e.currentTarget.src = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=300&auto=format&fit=crop";
+                      }}
+                    />
                   </div>
                 </div>
               </div>
