@@ -63,6 +63,14 @@ export default function TransactionPage() {
       const res = await fetch(`https://rentoka.olifemassage.com/api/customer/transaction?id_customer=${customerId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("id_customer");
+        router.replace("/login");
+        return;
+      }
+
       const json = await res.json();
       if (json.success) setTransactions(json.data);
     } catch (err) {
@@ -79,6 +87,13 @@ export default function TransactionPage() {
       const res = await fetch(`https://rentoka.olifemassage.com/api/customer/transaction?id_transaction=${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("id_customer");
+        router.replace("/login");
+        return;
+      }
       const json = await res.json();
       if (json.success) {
         setDetailData(json.data);
@@ -127,6 +142,13 @@ export default function TransactionPage() {
       },
       body: JSON.stringify({ id_transaction: transactionId }),
     });
+
+    if (res.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("id_customer");
+        router.replace("/login");
+        return;
+      }
 
     const json = await res.json();
 
@@ -200,8 +222,21 @@ export default function TransactionPage() {
                 {item.transaction_status.toUpperCase() === "IN_REVIEW" ? (
                   <button 
                     onClick={() => handleOpenModal(item)}
-                    className="bg-white text-black border-2 border-gray-100 px-8 py-2.5 rounded-2xl text-xs font-black hover:bg-black hover:text-white hover:border-black transition-all shadow-sm active:scale-95 uppercase tracking-wider"
-                  >
+                    className="
+                          bg-red-600 
+                          text-white 
+                          px-8 
+                          py-2.5 
+                          rounded-2xl 
+                          text-xs 
+                          font-black 
+                          uppercase 
+                          tracking-wider
+                          shadow-md
+                          hover:bg-red-700
+                          active:scale-95
+                          transition-all
+                        "                  >
                     Ajukan Pembatalan
                   </button>
                 ) : (

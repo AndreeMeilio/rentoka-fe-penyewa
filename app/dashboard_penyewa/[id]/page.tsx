@@ -15,8 +15,32 @@ export default function CarDetailPage() {
   const [paymentError, setPaymentError] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showFinalCheck, setShowFinalCheck] = useState(false);
-  const [currentTransactionId, setCurrentTransactionId] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showSuccessSignModal, setShowSuccessSignModal] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+
+  const isAuthValid = () => {
+    if (typeof window === "undefined") return false;
+
+    const token = localStorage.getItem("token");
+    const customerId = localStorage.getItem("id_customer");
+
+    if (!token || token === "null" || token === "undefined") return false;
+    if (!customerId || customerId === "null") return false;
+
+    return true;
+  };
+
+  useEffect(() => {
+     console.log("TOKEN:", localStorage.getItem("token"));
+     console.log("CUSTOMER:", localStorage.getItem("id_customer"));
+     setIsLoggedIn(isAuthValid());
+  }, []);
+
+
 
   // Mengambil data dari URL (dikirim dari parent)
   const car = {
@@ -47,7 +71,6 @@ export default function CarDetailPage() {
   const [totalPrice, setTotalPrice] = useState(0);
 
   useEffect(() => {
-    setIsLoggedIn(!!localStorage.getItem("token"));
     
     if (startDate && endDate && car.rental_price) {
       const start = new Date(startDate);
@@ -60,10 +83,6 @@ export default function CarDetailPage() {
     }
   }, [startDate, endDate]);
   
-
-  const handleContinue = async () => {
-    console.log("Data siap dikirim:", { ...formData, ...car, startDate, endDate, totalPrice });
-  };
 
   const handleCreateTransaction = async () => {
   // 1. Validasi sederhana di sisi klien
@@ -96,6 +115,13 @@ export default function CarDetailPage() {
       },
       body: JSON.stringify(payload),
     });
+
+    if (response.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("id_customer");
+      router.replace("/login");
+      return;
+    }
 
     const result = await response.json();
 
@@ -131,11 +157,23 @@ const handleProcessPayment = async (transactionId: any) => {
       body: JSON.stringify(payload),
     });
 
+    if (response.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("id_customer");
+      router.replace("/login");
+      return;
+    }
+
     const result = await response.json();
 
     if (result.success) {
-      setShowFinalCheck(false); 
-      setShowSuccessModal(true); 
+      // 1. TUTUP semua modal terlebih dahulu agar form tidak terlihat
+      setShowFinalCheck(false);
+      setShowConfirmModal(false);
+      setShowPaymentModal(false);
+      
+      // 2. Tampilkan modal sukses
+      setShowSuccessModal(true);
     } else {
       alert("Gagal memproses pembayaran: " + result.message);
     }
@@ -144,6 +182,53 @@ const handleProcessPayment = async (transactionId: any) => {
     alert("Terjadi kesalahan sistem saat pembayaran.");
   }
 };
+
+const handleSignUp = async (e?: React.FormEvent) => {
+  if (e) e.preventDefault();
+
+  setError("");
+  setLoading(true);
+
+  if (!email || !password || !confirmPassword) {
+    setError("Email dan password wajib diisi");
+    setLoading(false);
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    setError("Konfirmasi password tidak cocok!");
+    setLoading(false);
+    return;
+  }
+
+  try {
+    const res = await fetch("https://rentoka.olifemassage.com/api/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        password,
+        confirm_password: confirmPassword,
+        customer_name: email.split("@")[0],
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || "Register gagal");
+    }
+
+    
+    //setShowSuccessSignModal(true);
+  } catch (err: any) {
+    setError(err.message || "Terjadi kesalahan sistem.");
+  } finally {
+    setLoading(false);
+  }
+};
+
+
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -311,6 +396,8 @@ const handleProcessPayment = async (transactionId: any) => {
                     />
                     <input
                     type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="********"
                     className="w-full bg-[#D9D9D9] pl-12 pr-4 py-3.5 rounded-xl text-sm font-bold text-gray-700 placeholder:text-gray-500 outline-none border-none"
                     />
@@ -353,7 +440,8 @@ const handleProcessPayment = async (transactionId: any) => {
 
                   setShowPaymentModal(true); 
                 } else {
-                  router.push("/login");
+                   handleSignUp();
+                  //router.push("/login");
                 }
               }}
               className="w-full bg-black text-white py-5 rounded-2xl font-black text-xl ..."
@@ -554,7 +642,44 @@ const handleProcessPayment = async (transactionId: any) => {
             <button 
               onClick={() => {
                 setShowSuccessModal(false);
-                router.push("/dashboard_penyewa/transaction"); // Arahkan ke history setelah klik
+                // Gunakan replace agar history form sewa ditimpa oleh halaman transaksi
+                router.push("/dashboard_penyewa/transactions");
+
+              }}
+              className="w-full bg-black text-white py-4 rounded-2xl font-bold text-lg hover:scale-[1.02] transition-transform active:scale-95"
+            >
+              Lihat Pesanan Saya
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL SUKSES PEMBAYARAN */}
+      {showSuccessSignModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[150] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl text-center transform transition-all animate-in fade-in zoom-in duration-300">
+            
+            {/* Animasi Checkmark */}
+            <div className="flex justify-center mb-6">
+              <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center animate-bounce">
+                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-200">
+                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <h2 className="text-3xl font-black text-black mb-2 uppercase italic">Success!</h2>
+            <p className="text-gray-500 font-medium leading-relaxed mb-8">
+              Registrasi berhasil. Silahkan login terlebih dahulu.
+            </p>
+
+            <button 
+              onClick={() => {
+                setShowSuccessSignModal(false);
+                // Gunakan replace agar history form sewa ditimpa oleh halaman transaksi
+                router.push("/login");
               }}
               className="w-full bg-black text-white py-4 rounded-2xl font-bold text-lg hover:scale-[1.02] transition-transform active:scale-95"
             >

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Star, MapPin, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation"; 
 
 interface Car {
   id_vehicle: number;
@@ -19,6 +20,7 @@ interface Car {
 export default function DashboardPage() {
   const [cars, setCars] = useState<Car[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   const fetchCars = async () => {
     try {
@@ -31,6 +33,13 @@ export default function DashboardPage() {
           "Content-Type": "application/json"
         },
       });
+
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("id_customer");
+        router.replace("/login");
+        return;
+      }
       
       const json = await res.json();
       

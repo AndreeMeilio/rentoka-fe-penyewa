@@ -38,6 +38,12 @@ export default function ProfilePage() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("id_customer");
+        router.replace("/login");
+        return;
+      }
       const json = await res.json();
       if (!res.ok) throw new Error("Gagal load profile");
 
@@ -85,6 +91,12 @@ export default function ProfilePage() {
       body: JSON.stringify(payload),
     });
 
+    if (res.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("id_customer");
+        router.replace("/login");
+        return;
+      }
     const json = await res.json();
 
     if (!res.ok) {

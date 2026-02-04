@@ -67,10 +67,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("token");
+    localStorage.removeItem("id_customer");
+    localStorage.removeItem("isLoggedIn"); // optional (kalau masih ada sisa)
     setIsLoggedIn(false);
-    router.push("/dashboard_penyewa");
+    router.replace("/login");
   };
+
 
   const menuItems = [
     { name: "Home", href: "/dashboard_penyewa", icon: Home, requiresAuth: false },
